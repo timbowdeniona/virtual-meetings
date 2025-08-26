@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark theme defaults */
+:root {
+  --bg: #0b0f1a;
+  --fg: #e5e7eb;
+  --muted: #9ca3af;
+  --card: #0f172a;
+  --ring: #334155;
+}
+
+html { color-scheme: dark; }
+
+body {
+  @apply bg-surface text-gray-200 antialiased;
+}
+
+.card {
+  @apply rounded-2xl bg-slate-900/60 shadow-soft ring-1 ring-slate-700/50;
+}
+
+.input {
+  @apply w-full rounded-xl bg-slate-900/60 ring-1 ring-slate-700/60 px-4 py-2 outline-none focus:ring-2 focus:ring-slate-400;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 ring-1 ring-slate-600 hover:ring-slate-400 transition;
+}
