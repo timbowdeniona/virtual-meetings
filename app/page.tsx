@@ -1,6 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+import ReactMarkdown from 'react-markdown'
+
+
+// 🔹 Dynamically import ReactQuill (client-side only)
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
+import 'react-quill/dist/quill.snow.css'
 
 export default function HomePage() {
   const [form, setForm] = useState({
@@ -12,11 +19,11 @@ export default function HomePage() {
   })
   const [meetingTypes, setMeetingTypes] = useState<any[]>([])
   const [personas, setPersonas] = useState<any[]>([])
+  const [jiraId, setJiraId] = useState('')
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Load meetingTypes + personas from Sanity API routes
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -67,13 +74,56 @@ export default function HomePage() {
     }))
   }
 
+  // Jira description parser (still gives clean text, but we’ll store in Quill)
+  const parseJiraDescription = (desc: any): string => {
+    if (!desc || !desc.content) return ''
+    const lines: string[] = []
+    const walk = (nodes: any[]) => {
+      for (const node of nodes) {
+        if (node.type === 'text' && node.text) lines.push(node.text)
+        if (node.type === 'paragraph') {
+          if (node.content) walk(node.content)
+          lines.push('<br/>')
+        }
+        if (node.type === 'heading') {
+          lines.push(`<h${node.attrs.level}>${(node.content || []).map((c: any) => c.text).join(' ')}</h${node.attrs.level}>`)
+        }
+        if (node.type === 'bulletList' && node.content) {
+          node.content.forEach((li: any) => {
+            const text = (li.content || [])
+              .map((n: any) => (n.content || []).map((c: any) => c.text || '').join(' '))
+              .join(' ')
+            lines.push(`<li>${text}</li>`)
+          })
+        }
+        if (node.content) walk(node.content)
+      }
+    }
+    walk(desc.content)
+    return lines.join(' ')
+  }
+
+  const fetchJira = async () => {
+    if (!jiraId) return
+    try {
+      const res = await fetch(`/api/jira/${jiraId}`)
+      if (!res.ok) throw new Error(await res.text())
+      const issue = await res.json()
+      const parsed = `
+        <p><strong>Jira Issue:</strong> ${issue.id}</p>
+        <p><strong>Summary:</strong> ${issue.summary}</p>
+        <div>${parseJiraDescription(issue.description)}</div>
+      `
+      setForm(prev => ({ ...prev, instructions: parsed }))
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch Jira issue')
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="card p-6">
         <h1 className="text-2xl font-semibold mb-2">Run a Meeting</h1>
-        <p className="text-sm text-gray-400 mb-6">
-          Provide meeting details and select meeting type & attendees.
-        </p>
         <form className="grid gap-4" onSubmit={onSubmit}>
           <input
             className="input"
@@ -81,6 +131,19 @@ export default function HomePage() {
             value={form.name}
             onChange={e => setForm({ ...form, name: e.target.value })}
           />
+
+          {/* Jira ID fetcher */}
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              placeholder="Jira ID (e.g., AP-244)"
+              value={jiraId}
+              onChange={e => setJiraId(e.target.value)}
+            />
+            <button type="button" className="btn" onClick={fetchJira}>
+              Fetch from Jira
+            </button>
+          </div>
 
           {/* Meeting Type dropdown */}
           <select
@@ -96,14 +159,17 @@ export default function HomePage() {
             ))}
           </select>
 
-          <textarea
-            className="input min-h-24"
-            placeholder="Instructions / Jira story"
-            value={form.instructions}
-            onChange={e =>
-              setForm({ ...form, instructions: e.target.value })
-            }
-          />
+          {/* Rich Text Editor for instructions */}
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Instructions / Jira story</p>
+            <ReactQuill
+              theme="snow"
+              value={form.instructions}
+              onChange={(val) => setForm({ ...form, instructions: val })}
+              className="bg-slate-900 text-white rounded-xl"
+            />
+          </div>
+
           <input
             className="input"
             placeholder="Goal (optional)"
@@ -111,7 +177,7 @@ export default function HomePage() {
             onChange={e => setForm({ ...form, goal: e.target.value })}
           />
 
-          {/* Attendees multi-select checkboxes */}
+          {/* Attendees multi-select */}
           <div className="card p-4">
             <p className="mb-2 text-sm text-gray-400">Select Attendees</p>
             <div className="grid gap-2">
@@ -140,7 +206,11 @@ export default function HomePage() {
       </section>
 
       {error && <div className="card p-4 text-red-300">{error}</div>}
-      {result && <pre className="card p-4 whitespace-pre-wrap">{result}</pre>}
+      {result && (
+        <div className="card p-4 prose prose-invert max-w-none">
+          <ReactMarkdown>{result}</ReactMarkdown>
+        </div>
+      )}
     </div>
   )
 }

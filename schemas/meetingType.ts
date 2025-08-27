@@ -30,5 +30,13 @@ export default defineType({
       rows: 6,
       description: 'Guidance or system prompt to steer the discussion for this meeting type',
     }),
+    defineField({
+      name: 'generationTemplate',
+      title: 'Generation Template',
+      type: 'text',
+      rows: 8,
+      description:
+        'The instruction block appended after "Please generate:". Example: "1) A realistic transcript ... 2) Acceptance criteria ... 3) Actions."',
+    }),
   ],
 })
