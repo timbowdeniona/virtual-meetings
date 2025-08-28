@@ -33,6 +33,12 @@ export default defineType({
       }
     }),
     defineField({
+      name: 'knowledge',
+      title: 'Knowledge Base',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'knowledgeDoc' }] }]
+    }),
+    defineField({
       name: 'associatedFiles',
       title: 'Associated Files',
       type: 'array',

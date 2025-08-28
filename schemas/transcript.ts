@@ -14,5 +14,12 @@ export default defineType({
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'persona' }] }]
     }),
+    defineField({
+      name: 'embedding',
+      title: 'Embedding',
+      type: 'array',
+      of: [{ type: 'number' }],
+      hidden: true,
+    })
   ]
 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { client } from '@/lib/sanity.server'
+import { semanticSearch, formatKnowledge } from '@/lib/embeddingSearch'
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 
@@ -34,11 +35,27 @@ export async function POST(req: NextRequest) {
       .map((p: any) => `- ${p.name} (${p.role}): ${p.systemInstruction}`)
       .join('\n')
 
+    // 🔹 Build query text for embedding search
+    const queryText = `${effectiveGoal}\n\n${effectiveInstructions}`
+
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
+    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' })
+
+    const queryEmbedding = (await embeddingModel.embedContent(queryText)).embedding.values
+
+    // 🔹 Retrieve relevant knowledge from Sanity
+    const relevantDocs = await semanticSearch(queryEmbedding, 3)
+    const knowledgeContext = formatKnowledge(relevantDocs)
+
+    // 🔹 Construct final prompt
     const prompt = `You are facilitating a ${mtDoc?.name || 'meeting'}.
 Goal: ${effectiveGoal || 'Refine the story and produce clear outcomes.'}
 
 Participants (with system instructions):
 ${systemBits || '- (none provided, assume PO/Dev/QA roles)'}
+
+Context from prior knowledge:
+${knowledgeContext || '(no relevant knowledge found)'}
 
 Jira/user story / context:
 ${effectiveInstructions || '(no additional context provided)'}
@@ -49,7 +66,6 @@ ${mtDoc?.generationTemplate || `1) A realistic, concise transcript of the discus
 3) 3-5 follow-up actions.`}`
 
     // 🔹 Call Gemini
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
     const model = genAI.getGenerativeModel({ model: MODEL })
     const res = await model.generateContent(prompt)
     const text = res.response.text()
@@ -66,12 +82,14 @@ ${mtDoc?.generationTemplate || `1) A realistic, concise transcript of the discus
       meetingType: mtDoc?._id || meetingType || 'unknown',
       transcript: text,
       attendees,
+      embedding: queryEmbedding, // optional: store the query embedding for traceability
     })
 
     return NextResponse.json({
       ok: true,
       transcript: text,
       sanityId: doc._id,
+      usedKnowledge: relevantDocs.map((d: { _id: any; score: any }) => ({ id: d._id, score: d.score })),
     })
   } catch (err: any) {
     console.error(err)
