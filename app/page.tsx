@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import ReactMarkdown from 'react-markdown'
 
-
-// 🔹 Dynamically import ReactQuill (client-side only)
+// 🔹 Dynamically import ReactQuill
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
 import 'react-quill/dist/quill.snow.css'
 
@@ -16,6 +15,7 @@ export default function HomePage() {
     instructions: '',
     goal: '',
     attendees: [] as string[],
+    files: [] as { name: string; content: string }[],   // 🔹 store file text
   })
   const [meetingTypes, setMeetingTypes] = useState<any[]>([])
   const [personas, setPersonas] = useState<any[]>([])
@@ -38,6 +38,24 @@ export default function HomePage() {
     fetchData()
   }, [])
 
+  // 🔹 Handle file uploads
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files
+    if (!fileList) return
+    const newFiles: { name: string; content: string }[] = []
+
+    for (const file of Array.from(fileList)) {
+      if (file.type === 'text/plain') {
+        const text = await file.text()
+        newFiles.push({ name: file.name, content: text })
+      } else {
+        alert(`Unsupported file type: ${file.name}. Only .txt allowed.`)
+      }
+    }
+
+    setForm(prev => ({ ...prev, files: [...prev.files, ...newFiles] }))
+  }
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setRunning(true)
@@ -53,6 +71,7 @@ export default function HomePage() {
           instructions: form.instructions,
           goal: form.goal,
           attendeeIds: form.attendees,
+          files: form.files,   // 🔹 pass files to backend
         }),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -74,52 +93,6 @@ export default function HomePage() {
     }))
   }
 
-  // Jira description parser (still gives clean text, but we’ll store in Quill)
-  const parseJiraDescription = (desc: any): string => {
-    if (!desc || !desc.content) return ''
-    const lines: string[] = []
-    const walk = (nodes: any[]) => {
-      for (const node of nodes) {
-        if (node.type === 'text' && node.text) lines.push(node.text)
-        if (node.type === 'paragraph') {
-          if (node.content) walk(node.content)
-          lines.push('<br/>')
-        }
-        if (node.type === 'heading') {
-          lines.push(`<h${node.attrs.level}>${(node.content || []).map((c: any) => c.text).join(' ')}</h${node.attrs.level}>`)
-        }
-        if (node.type === 'bulletList' && node.content) {
-          node.content.forEach((li: any) => {
-            const text = (li.content || [])
-              .map((n: any) => (n.content || []).map((c: any) => c.text || '').join(' '))
-              .join(' ')
-            lines.push(`<li>${text}</li>`)
-          })
-        }
-        if (node.content) walk(node.content)
-      }
-    }
-    walk(desc.content)
-    return lines.join(' ')
-  }
-
-  const fetchJira = async () => {
-    if (!jiraId) return
-    try {
-      const res = await fetch(`/api/jira/${jiraId}`)
-      if (!res.ok) throw new Error(await res.text())
-      const issue = await res.json()
-      const parsed = `
-        <p><strong>Jira Issue:</strong> ${issue.id}</p>
-        <p><strong>Summary:</strong> ${issue.summary}</p>
-        <div>${parseJiraDescription(issue.description)}</div>
-      `
-      setForm(prev => ({ ...prev, instructions: parsed }))
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch Jira issue')
-    }
-  }
-
   return (
     <div className="grid gap-6">
       <section className="card p-6">
@@ -131,19 +104,6 @@ export default function HomePage() {
             value={form.name}
             onChange={e => setForm({ ...form, name: e.target.value })}
           />
-
-          {/* Jira ID fetcher */}
-          <div className="flex gap-2">
-            <input
-              className="input flex-1"
-              placeholder="Jira ID (e.g., AP-244)"
-              value={jiraId}
-              onChange={e => setJiraId(e.target.value)}
-            />
-            <button type="button" className="btn" onClick={fetchJira}>
-              Fetch from Jira
-            </button>
-          </div>
 
           {/* Meeting Type dropdown */}
           <select
@@ -161,7 +121,7 @@ export default function HomePage() {
 
           {/* Rich Text Editor for instructions */}
           <div>
-            <p className="text-sm text-gray-400 mb-1">Instructions / Jira story</p>
+            <p className="text-sm text-gray-400 mb-1">Instructions / Context</p>
             <ReactQuill
               theme="snow"
               value={form.instructions}
@@ -194,13 +154,21 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* 🔹 File upload */}
+          <div>
+            <label className="text-sm text-gray-400">Attach .txt files</label>
+            <input type="file" multiple accept=".txt" onChange={handleFiles} />
+            <ul className="text-xs text-gray-400 mt-2">
+              {form.files.map((f, i) => (
+                <li key={i}>{f.name}</li>
+              ))}
+            </ul>
+          </div>
+
           <div className="flex gap-3">
             <button className="btn" disabled={running} type="submit">
               {running ? 'Running…' : 'Run meeting'}
             </button>
-            <a className="btn" href="/studio" target="_blank" rel="noreferrer">
-              Open Sanity Studio
-            </a>
           </div>
         </form>
       </section>
