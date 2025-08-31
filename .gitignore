@@ -6,6 +6,7 @@ node_modules
 out
 dist
 dist-scripts
+data/files/
 
 # Local Netlify folder
 .netlify
