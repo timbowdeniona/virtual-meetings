@@ -29,6 +29,7 @@ export default defineType({
           { title: 'Product Owner', value: 'Product Owner' },
           { title: 'Project Manager', value: 'Project Manager' },
           { title: 'Other', value: 'Other' },
+          { title: 'Other', value: 'Other' },
         ]
       }
     }),
