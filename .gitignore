@@ -5,7 +5,12 @@ node_modules
 .DS_Store
 out
 dist
+dist-scripts
+data/files/
 
 # Local Netlify folder
 .netlify
 .sanity
+google-cloud-sdk
+
+key.json

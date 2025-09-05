@@ -98,3 +98,53 @@ npm i
 npm run dev
 # open http://localhost:3000 and http://localhost:3000/studio
 ```
+
+flowchart TD
+    subgraph Client["🖥️ Client (Browser)"]
+        UI["Homepage UI\n• Meeting type dropdown\n• Personas selector\n• Attach files"]
+        Studio["Sanity Studio (embedded)"]
+    end
+
+    subgraph Netlify["⚡ Next.js App (Netlify)"]
+        RunMeeting["/api/run-meeting\nMerges defaults + user input\n→ Gemini"]
+        JiraAPI["/api/jira/[id]\nFetch + parse Jira issue"]
+        Ingest["/api/ingest-knowledge\nEmbed & upsert docs"]
+        Search["/lib/embeddingSearch.ts\nextract → embed → search/upsert"]
+    end
+
+    subgraph Sanity["📦 Sanity (CMS)"]
+        Schemas["Schemas\npersona / meetingType / transcript / fileRef"]
+        Content["Content\nPersonas, Meeting Types, Transcripts"]
+    end
+
+    subgraph GCP["☁️ Google Cloud (ai-training-470511)"]
+        Gemini["Vertex AI — Gemini\ntext-embedding-004, generative models"]
+        Index["Matching Engine Vector Search\nIndex + Endpoint deployed"]
+        GCS["Cloud Storage\nBucket: timberyard-ai-bucket"]
+    end
+
+    subgraph External["🌐 External Services"]
+        Jira["Jira Cloud API"]
+        Fireflies["Fireflies.ai (optional)\nWebhook transcripts"]
+        Files["User Files\n.pdf .docx .pptx .xlsx .txt"]
+        Outputs["Outputs\nTranscripts, Acceptance Criteria,\n.pptx decks (planned)"]
+    end
+
+    %% Edges
+    UI -->|Form submit| RunMeeting
+    Studio -->|Manage content| Schemas
+    RunMeeting -->|Fetch defaults| Schemas
+    RunMeeting -->|Fetch personas| Content
+    RunMeeting -->|Calls| Gemini
+    RunMeeting -->|Vector search| Index
+    RunMeeting -->|Save transcript| Content
+    JiraAPI --> Jira
+    Ingest --> Search
+    Search --> Gemini
+    Search --> Index
+    Ingest --> GCS
+    Files --> Ingest
+    Files --> RunMeeting
+    Fireflies --> Content
+    Content --> Outputs
+Nop

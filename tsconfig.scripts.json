@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2019",
+    "esModuleInterop": true,
+    "outDir": "dist-scripts"
+  },
+  "include": ["scripts/**/*.ts"]
+}
