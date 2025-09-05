@@ -12,3 +12,5 @@ data/files/
 .netlify
 .sanity
 google-cloud-sdk
+
+key.json
