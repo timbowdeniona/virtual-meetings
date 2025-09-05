@@ -1,29 +1,61 @@
-import './globals.css'
-import type { Metadata } from 'next'
+// app/layout.tsx
+import "./globals.css";
+import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: 'Virtual Meetings — Gemini + Sanity',
-  description: 'Spin up virtual meetings among personas to refine user stories and produce acceptance criteria.',
-}
+  title: "Virtual Meetings",
+  description: "AI-powered meeting assistant with Sanity + Gemini",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className="dark">
-      <body>
-        <div className="min-h-screen">
-          <header className="sticky top-0 z-10 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur">
-            <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
-              <div className="font-semibold tracking-wide">Virtual Meetings</div>
-              <nav className="space-x-3 text-sm text-gray-300">
-                <a className="hover:underline" href="/">Home</a>
-                <a className="hover:underline" href="/studio">Studio</a>
-              </nav>
-            </div>
-          </header>
-          <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-          <footer className="mx-auto max-w-5xl px-4 py-8 text-sm text-gray-400">Built with Next.js, Sanity & Gemini</footer>
-        </div>
+      <body className="bg-gray-950 text-gray-100 min-h-screen flex flex-col">
+        {/* Top Navigation */}
+        <header className="bg-gray-900 border-b border-gray-800">
+          <nav className="max-w-6xl mx-auto flex items-center gap-6 p-4 text-sm font-medium">
+            <Link
+              href="/"
+              className="hover:text-white text-gray-300 transition-colors"
+            >
+              Meetings
+            </Link>
+            <Link
+              href="/discovery-proposal"
+              className="hover:text-white text-gray-300 transition-colors"
+            >
+              Discovery Proposals
+            </Link>
+            <Link
+              href="/studio"
+              className="hover:text-white text-gray-300 transition-colors"
+            >
+              Studio
+            </Link>
+            <Link
+              href="/docs"
+              className="hover:text-white text-gray-300 transition-colors"
+            >
+              Documents
+            </Link>
+          </nav>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 max-w-6xl mx-auto w-full p-6">
+          {children}
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 border-t border-gray-800 text-gray-400 text-xs p-4 text-center">
+          Virtual Meetings © {new Date().getFullYear()}
+        </footer>
       </body>
     </html>
-  )
+  );
 }
